@@ -22,7 +22,8 @@ const labels = {READY:'通过', MISMATCH:'数值不符', PENDING:'待复核', AP
   INVALID_SAMPLE:'样本登记无效', INVALID_REGISTER:'作者登记无效', INVALID_SIMILARITY:'相似度无效',
   AUTHORITY_EXCLUSION_CONFLICT:'权威编号与禁用关系冲突', HISTORY_LIMIT:'历史窗口过长',
   DAY_OUT_OF_RANGE:'观测日超出范围', INVALID_COHORT:'入柜队列无效', PICKUP_CONFLICT:'领取记录冲突',
-  INVALID_OBSERVATION:'抽检记录无效', INVALID_SAMPLE_REGISTRY:'样本记录无效'};
+  INVALID_OBSERVATION:'抽检记录无效', INVALID_SAMPLE_REGISTRY:'样本记录无效',
+  ROSTER_CHANGED:'可用名单已收缩', STALE_ROSTER:'名单版本过期'};
 
 const valueLabels = {RPD:'相对偏差', ABSOLUTE:'绝对差', BOTH_ND:'双方未检出', MIXED_LOD:'一侧低于检出限',
   EQUALITY:'等值删除', POSITION:'位置删除', PRIMARY:'初次遮蔽', SECONDARY:'追加遮蔽',
@@ -116,4 +117,61 @@ export function history(items, active) {
     target.append(item);
   }
   if (!items.length) target.append(element('li','尚无执行批次'));
+}
+
+function idList(values) {
+  return values?.length ? values.join('、') : '—';
+}
+
+export function rosterView(target, batch) {
+  if (!target) return;
+  target.replaceChildren();
+  if (!batch?.roster) {
+    target.textContent = '执行批次后，可在此补录近重复关系并查看可用名单。';
+    return;
+  }
+  const roster = batch.roster;
+  target.dataset.revision = String(batch.revision ?? '');
+  target.dataset.rosterRevision = String(roster.roster_revision ?? '');
+  target.dataset.hash = roster.hash || '';
+
+  const summary = element('p', `批次版本 r${batch.revision} · 已补录 ${batch.supplements?.length || 0} 条关系 · 名单指纹 ${(roster.hash || '').slice(0, 10)}`, {class:'roster-summary'});
+  target.append(summary);
+
+  for (const item of roster.cases || []) {
+    const box = element('div', undefined, {class:'roster-case', 'data-roster-case':item.case || ''});
+    const head = element('div', undefined, {class:'roster-case-head'});
+    head.append(element('strong', `分组 ${item.case ?? '—'}`));
+    if (item.changed) head.append(badge('ROSTER_CHANGED'));
+    box.append(head);
+
+    const rows = [
+      ['训练集可用', item.train, 'train'],
+      ['评估集可用', item.evaluation, 'evaluation'],
+      ['继续可用合计', item.available, 'available'],
+      ['退出后续取样', item.quarantined, 'quarantined'],
+    ];
+    for (const [label, values, key] of rows) {
+      const row = element('p', undefined, {class:`roster-line roster-${key}`, 'data-roster-line':key});
+      row.append(element('span', `${label}：`, {class:'roster-label'}));
+      row.append(element('output', idList(values), {'data-roster-list':key}));
+      box.append(row);
+    }
+
+    const details = element('details', undefined, {class:'roster-original'});
+    details.append(element('summary', '查看原名单与传递组'));
+    details.append(element('p', `原训练：${idList(item.initial?.train)}；原评估：${idList(item.initial?.evaluation)}；原隔离：${idList(item.initial?.quarantined)}`));
+    details.append(element('p', `当前连通组：${(item.groups || []).map(group => group.join('-')).join(' ｜ ') || '—'}`));
+    box.append(details);
+    target.append(box);
+  }
+
+  if (batch.supplements?.length) {
+    const log = element('ol', undefined, {class:'supplement-log', 'aria-label':'补录关系记录'});
+    for (const rel of batch.supplements) {
+      log.append(element('li', `${rel.case || rel.case_code || '—'}：${rel.a ?? rel.left_sample} ↔ ${rel.b ?? rel.right_sample}${rel.changed ? '（名单已收缩）' : '（名单未变）'}`,
+        {'data-supplement-id':String(rel.id || rel.seq || '')}));
+    }
+    target.append(element('h3', '补录记录'), log);
+  }
 }

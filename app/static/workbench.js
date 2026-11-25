@@ -1,5 +1,5 @@
 import {request} from './client.js';
-import {snapshot, history} from './view.js';
+import {snapshot, history, rosterView} from './view.js';
 import {visualize} from './plots.js';
 
 const form = document.querySelector('#source');
@@ -8,6 +8,11 @@ const profile = document.querySelector('#profile');
 const status = document.querySelector('#notice');
 const detail = document.querySelector('#review');
 const evidence = document.querySelector('#evidence');
+const supplementForm = document.querySelector('#supplement-form');
+const rosterPanel = document.querySelector('#roster');
+const viewRosterButton = document.querySelector('#view-roster');
+const caseInput = document.querySelector('#supplement-case');
+const caseOptions = document.querySelector('#case-codes');
 const stages = [...document.querySelectorAll('[data-stage]')];
 let stage = 'balance';
 let report, selected, batch, running = false;
@@ -31,6 +36,9 @@ function draw() {
   for (const button of stages) button.setAttribute('aria-pressed',String(button.dataset.stage===stage));
   document.querySelector('#panel-title').textContent = stages.find(button => button.dataset.stage===stage)?.textContent || '运行对账';
   detail.hidden = !batch;
+  if (supplementForm) supplementForm.hidden = !batch;
+  if (viewRosterButton) viewRosterButton.disabled = !batch;
+  rosterView(rosterPanel, batch);
   if (batch) {
     document.querySelector('#run-status').textContent = `${batch.id.slice(0,10)} · ${batch.status} · r${batch.revision}`;
     detail.querySelector('[value="APPROVED"]').disabled = !report.balance.releasable || batch.status==='APPROVED';
@@ -44,6 +52,14 @@ function show(payload, committed = false) {
   report = committed ? payload.report : payload;
   detail.elements.note.value = batch?.note || '';
   selected = report.cases?.[0]?.case;
+  if (caseOptions) {
+    caseOptions.replaceChildren(...(report.cases || []).map(item => {
+      const option = document.createElement('option');
+      option.value = item.case;
+      return option;
+    }));
+  }
+  if (caseInput && batch) caseInput.value = selected || '';
   draw();
 }
 
@@ -86,7 +102,7 @@ profile.addEventListener('change',()=>{file.value=''; filename.textContent=''; p
 file.addEventListener('change',()=>{filename.textContent=file.files[0]?.name || ''; preview(stage);});
 document.querySelector('#rows').addEventListener('click',event=>{
   const button = event.target.closest('[data-case]');
-  if (button) { selected = button.dataset.case; draw(); document.querySelector(`[data-case="${CSS.escape(selected)}"]`).focus(); }
+  if (button) { selected = button.dataset.case; draw(); if (caseInput && batch) caseInput.value=selected; document.querySelector(`[data-case="${CSS.escape(selected)}"]`).focus(); }
 });
 document.querySelector('#history').addEventListener('click',event=>{
   const button = event.target.closest('[data-run]');
@@ -98,9 +114,60 @@ document.querySelector('#history').addEventListener('click',event=>{
 detail.addEventListener('submit',event=>{
   event.preventDefault();
   perform(async()=>{
-    const payload={status:event.submitter.value,revision:batch.revision,note:detail.elements.note.value};
-    const result=await request(`/api/runs/${batch.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const payload={
+      status:event.submitter.value,
+      revision:batch.revision,
+      note:detail.elements.note.value,
+      roster_revision:batch.roster?.roster_revision,
+      roster_hash:batch.roster?.hash,
+    };
+    let result;
+    try {
+      result=await request(`/api/runs/${batch.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    } catch (error) {
+      if (error.code === 'STALE_REVIEW' || error.codes?.includes('ROSTER_CHANGED')) {
+        const latest = await request(`/api/runs/${batch.id}`);
+        show(latest,true);
+        await refresh();
+        announce('可用名单已被补录更新，请按新名单复核',true);
+        return;
+      }
+      throw error;
+    }
     show(result,true); announce(result.status==='APPROVED'?'批次已签发':'批次已暂缓'); await refresh();
+  });
+});
+if (supplementForm) supplementForm.addEventListener('submit',event=>{
+  event.preventDefault();
+  if (!batch) return;
+  perform(async()=>{
+    const payload={
+      case:supplementForm.elements['case'].value.trim(),
+      a:supplementForm.elements.a.value.trim(),
+      b:supplementForm.elements.b.value.trim(),
+      note:supplementForm.elements.note.value.trim(),
+    };
+    const result=await request(`/api/runs/${batch.id}/supplements`,{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),
+    });
+    stage='balance';
+    show(result,true);
+    selected=result.case || payload.case || selected;
+    if (caseInput) caseInput.value=payload.case;
+    draw();
+    supplementForm.elements.a.value='';
+    supplementForm.elements.b.value='';
+    supplementForm.elements.note.value='';
+    announce(result.changed ? '关系已入账，相连组已退出可用名单' : '关系已入账，可用名单未变');
+    await refresh();
+  });
+});
+if (viewRosterButton) viewRosterButton.addEventListener('click', () => {
+  if (!batch) return;
+  perform(async () => {
+    const latest = await request(`/api/runs/${batch.id}`);
+    show(latest, true);
+    announce('可用名单已刷新');
   });
 });
 preview(stage);

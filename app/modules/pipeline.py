@@ -9,6 +9,17 @@ from app.modules.reconcile import balance
 
 def evaluate(rows, stage):
     case = {'case':rows[0]['case'],'records':[r['record'] for r in rows], 'status':'READY'}
+    case['registry'] = {
+        'sample_to_record': {str(r['sample']): r['record'] for r in rows if r['kind'] == 'record'},
+        'record_to_sample': {r['record']: r['sample'] for r in rows if r['kind'] == 'record'},
+        'samples': {
+            str(r['sample']): {
+                'record': r['record'], 'entity': r['entity'], 'fingerprint': r['fingerprint'],
+                'day': r['day'], 'split_code': r['split_code'],
+            }
+            for r in rows if r['kind'] == 'record'
+        },
+    }
     try:
         case['prep'], payload = prepare(rows)
         if stage >= 3:

@@ -40,6 +40,28 @@
     <div class="review-actions"><button name="decision" value="HELD">暂缓</button><button class="action" name="decision" value="APPROVED">签发</button></div>
     <a id="evidence">下载复核证据</a>
   </form>
+  <section class="roster-box" id="roster-area" data-testid="roster-area" aria-labelledby="roster-title">
+    <div class="roster-heading">
+      <h2 id="roster-title">关系补录与可用名单</h2>
+      <button type="button" id="view-roster" data-testid="view-roster" class="roster-view-button">查看可用名单</button>
+    </div>
+    <form id="supplement-form" data-testid="supplement-form" hidden aria-label="补录近重复关系">
+      <label for="supplement-case">业务分组</label>
+      <input id="supplement-case" name="case" list="case-codes" autocomplete="off" required>
+      <datalist id="case-codes"></datalist>
+      <div class="relation-fields">
+        <label for="supplement-a">样本 A</label>
+        <input id="supplement-a" name="a" inputmode="numeric" autocomplete="off" required>
+        <span aria-hidden="true">↔</span>
+        <label for="supplement-b">样本 B</label>
+        <input id="supplement-b" name="b" inputmode="numeric" autocomplete="off" required>
+      </div>
+      <label for="supplement-note">补录说明（可选）</label>
+      <input id="supplement-note" name="note" maxlength="200" autocomplete="off">
+      <button class="action" type="submit">补录关系并更新名单</button>
+    </form>
+    <div id="roster" data-testid="available-roster" aria-live="polite">执行批次后，可在此补录近重复关系并查看可用名单。</div>
+  </section>
 </aside>
 {% endmacro %}
 {% macro status() %}

@@ -1,8 +1,13 @@
 """业务阶段之间约定的结果结构。"""
 class DomainIssue(ValueError):
-    def __init__(self, code):
-        super().__init__(code)
+    def __init__(self, code, *aliases):
+        super().__init__(' '.join((code, *aliases)))
         self.code = code
+        self.aliases = aliases
+        self.codes = {code, *aliases}
+
+    def matches(self, code):
+        return code in self.codes
 
 
 def by_kind(rows, kind):
