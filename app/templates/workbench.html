@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% import "widgets.html" as ui %}
+{% block shell %}
+<body class="split">
+<div class="desk-split">
+  <aside class="rail">
+    <a class="brand" href="/" aria-label="返回首页">{{ p.mark }}</a>
+    {{ ui.navigation(p) }}
+    <a class="rail-link" href="#review-area">批次复核</a>
+  </aside>
+  <div class="work-split">
+    {{ ui.identity(p) }}
+    <main class="grid main-split">
+    {{ ui.intake() }}
+    {{ ui.metrics() }}
+    {{ ui.visual(p) }}
+    {{ ui.results() }}
+    {{ ui.inspection() }}
+    {{ ui.archive() }}
+    </main>
+    {{ ui.status() }}
+  </div>
+</div>
+</body>
+{% endblock %}

@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh-CN" data-workbench="split">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{ p.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <script type="module" src="{{ url_for('static', filename='workbench.js') }}"></script>
+</head>
+{% block shell %}{% endblock %}
+</html>

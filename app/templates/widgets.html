@@ -1,0 +1,47 @@
+{% macro identity(p) %}
+<header class="mast topbar"><h1>{{ p.name }}</h1><p class="role">{{ p.actor }}</p></header>
+{% endmacro %}
+{% macro navigation(p) %}
+<nav class="stages" aria-label="处理阶段">
+{% for key, label in p.stages %}<button data-stage="{{ key }}" type="button" aria-pressed="false">{{ label }}</button>{% endfor %}
+</nav>
+{% endmacro %}
+{% macro intake() %}
+<form class="source" id="source" aria-label="批次输入">
+  <label>输入样例 <select id="profile"><option value="dirty">带异常样例</option><option value="clean">可签发样例</option></select></label>
+  <label for="file" class="file">上传 CSV</label><input id="file" type="file" accept=".csv,text/csv"><span id="file-name" aria-live="polite"></span>
+  <button type="submit" class="action">执行批次</button>
+</form>
+{% endmacro %}
+{% macro metrics() %}
+<div class="kpis" aria-label="输入统计">
+  {% for key, text in [('input','输入行'), ('accepted','采信行'), ('isolated','隔离行'), ('cases','业务组')] %}
+  <div class="metric"><span>{{ text }}</span><strong data-metric="{{ key }}">—</strong></div>
+  {% endfor %}
+</div>
+{% endmacro %}
+{% macro results() %}
+<section class="panel results" aria-labelledby="panel-title">
+  <div class="panel-head"><h2 id="panel-title">运行对账</h2><span id="counts"></span></div>
+  <div class="scroll"><table id="rows" aria-label="阶段结果"></table></div>
+</section>
+{% endmacro %}
+{% macro visual(p) %}
+<section class="panel chart" aria-label="结果图"><h2>{{ p.chart }}</h2><div id="visual"></div></section>
+{% endmacro %}
+{% macro inspection() %}
+<section class="panel inspection"><h2 id="detail-title">采信摘要</h2><div id="detail"></div></section>
+{% endmacro %}
+{% macro archive() %}
+<aside class="panel archive" id="review-area"><h2>批次复核</h2><ul id="history"></ul>
+  <form id="review" hidden>
+    <p id="run-status"></p><label for="note">复核意见</label>
+    <textarea id="note" name="note" minlength="3" maxlength="200" required></textarea>
+    <div class="review-actions"><button name="decision" value="HELD">暂缓</button><button class="action" name="decision" value="APPROVED">签发</button></div>
+    <a id="evidence">下载复核证据</a>
+  </form>
+</aside>
+{% endmacro %}
+{% macro status() %}
+<footer class="statusbar"><span id="notice" role="status" aria-live="polite">正在读取样例</span><a href="/examples/clean">下载样例 CSV</a></footer>
+{% endmacro %}
